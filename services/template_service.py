@@ -1,6 +1,8 @@
 # services/template_service.py
 
 import requests
+import json
+import csv  # Importe o módulo csv
 from models.template import Template
 from config.api_config import URL_PARTNER
 
@@ -8,6 +10,10 @@ class TemplateService:
     def __init__(self, app_token_service):
         self.app_token_service = app_token_service  # Instância de AppTokenService para autenticação
         self.templates = []  # Lista para armazenar templates
+
+    def set_id(self, id):
+        self.id = id
+        return id
 
     def fetch_templates(self, app_id):
         """Faz uma requisição para obter templates e os armazena na lista."""
@@ -62,3 +68,123 @@ class TemplateService:
 
         for template in self.templates:
             print(template)  # Chama o método __str__ da classe Template
+
+    def backup_templates(self, app_id):
+        """
+        Realiza o backup dos templates para um determinado app_id em um arquivo CSV.
+
+        Args:
+            app_id (str): O ID da aplicação Gupshup.
+        """
+        try:
+            # 1. Obter token da aplicação (já feito no construtor)
+            
+            # 2. Obter templates (chamando o fetch_templates)
+            self.fetch_templates(app_id)
+
+            # 3. Salvar templates em um arquivo CSV
+            with open('templates_backup.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["ID", "Name", "Texto", "Category", "Status"])  # Cabeçalho
+                for template in self.templates:  # Usa a lista de templates existente
+                    writer.writerow([template.get_id(), template.get_element_name(), template.get_data(), template.get_category(), template.get_status()])
+
+            print("Backup de templates realizado com sucesso em 'templates_backup.csv'")
+
+        except Exception as e:
+            print(f"[TemplateService] Erro ao realizar backup dos templates: {e}")
+
+    def create_template(self, app_id, name, category, language_code, content, example):  # Adicionado example
+            """
+            Cria um template sem botões na plataforma Gupshup.
+
+            Args:
+                app_id (str): O ID da aplicação Gupshup.
+                name (str): O nome do template.
+                category (str): A categoria do template.
+                language_code (str): O código do idioma do template.
+                content (str): O conteúdo do template, com as variáveis já no formato correto.
+                example (str): O exemplo do template, com os valores "Exemplo 1", "Exemplo 2", etc.
+            """
+            try:
+                url = f"{URL_PARTNER}partner/app/{app_id}/templates"
+                headers = {
+                    'Authorization': f'Bearer {self.app_token_service.get_app_token()}',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+
+                # Define os valores padrão
+                template_type = "TEXT"
+                vertical = name
+                enable_sample = True
+                allow_template_category_change = True
+
+                data = {
+                    'elementName': name,
+                    'languageCode': language_code,
+                    'category': category,
+                    'templateType': template_type,
+                    'vertical': vertical,
+                    'content': content,  # Usa o content recebido diretamente
+                    'example': example,  # Usa o example recebido diretamente
+                    'enableSample': enable_sample,
+                    'allowTemplateCategoryChange': allow_template_category_change,
+                    'buttons': []  # Lista vazia para botões
+                }
+
+                response = requests.post(url, headers=headers, data=data)
+
+                if response.status_code in (200, 204):
+                    print("Template criado com sucesso.")
+                    if response.status_code == 200:
+                        print(response.json())
+                else:
+                    print(f"Erro ao criar template: {response.status_code} - {response.text}")
+                    raise Exception("Não foi possível criar o template.")
+
+            except Exception as e:
+                print(f"[TemplateService] Erro ao criar template: {e}")
+
+    def remove_template_by_id(self, app_id, template_id):
+            """
+            Remove um template baseado no templateid
+
+            Args:
+                app_id (str): O ID da aplicação Gupshup.
+                template_id (str): O ID do template a ser removido.
+            """
+            try:
+                # 1. Obter os templates
+                self.fetch_templates(app_id)
+
+                # 2. Filtrar o template pelo ID
+                template_to_remove = None
+                for template in self.templates:
+                    if template.get_id() == template_id:
+                        template_to_remove = template
+                        break
+
+                if not template_to_remove:
+                    print(f"Template com ID {template_id} não encontrado.")
+                    return
+
+                # 3. Obter o nome do template
+                element_name = template_to_remove.get_element_name()
+
+                # 4. Construir a URL com o nome e o ID do template
+                url = f"{URL_PARTNER}partner/app/{app_id}/template/{element_name}/{template_id}"
+                headers = {
+                    'Authorization': f'Bearer {self.app_token_service.get_app_token()}',
+                }
+
+                # 5. Fazer a requisição DELETE
+                response = requests.delete(url, headers=headers)
+
+                if response.status_code == 200:
+                    print(f"Template com ID {template_id} removido com sucesso.")
+                else:
+                    print(f"Erro ao remover template: {response.status_code} - {response.text}")
+                    raise Exception("Não foi possível remover o template.")
+
+            except Exception as e:
+                print(f"[TemplateService] Erro ao remover template: {e}")
