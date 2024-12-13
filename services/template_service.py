@@ -94,56 +94,71 @@ class TemplateService:
         except Exception as e:
             print(f"[TemplateService] Erro ao realizar backup dos templates: {e}")
 
-    def create_template(self, app_id, name, category, language_code, content, example):  # Adicionado example
-            """
-            Cria um template sem botões na plataforma Gupshup.
+    def create_template(self, app_id, name, category, language_code, content, example):
+        """
+        Cria um template sem botões na plataforma Gupshup.
+            app_id (str): O ID da aplicação Gupshup.
+            name (str): O nome do template.
+            category (str): A categoria do template.
+            language_code (str): O código do idioma do template.
+            content (str): O conteúdo do template.
+            example (str): O exemplo do template.
+        """
+        try:
+            url = f"{URL_PARTNER}partner/app/{app_id}/templates"
+            headers = {
+                'Authorization': f'Bearer {self.app_token_service.get_app_token()}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
 
-            Args:
-                app_id (str): O ID da aplicação Gupshup.
-                name (str): O nome do template.
-                category (str): A categoria do template.
-                language_code (str): O código do idioma do template.
-                content (str): O conteúdo do template, com as variáveis já no formato correto.
-                example (str): O exemplo do template, com os valores "Exemplo 1", "Exemplo 2", etc.
-            """
-            try:
-                url = f"{URL_PARTNER}partner/app/{app_id}/templates"
-                headers = {
-                    'Authorization': f'Bearer {self.app_token_service.get_app_token()}',
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
+            data = {
+                'elementName': name,
+                'languageCode': language_code,
+                'category': category,
+                'templateType': "TEXT",
+                'vertical': name,
+                'content': content,
+                'example': example,
+                'enableSample': True,
+                'allowTemplateCategoryChange': True,
+                'buttons': []
+            }
 
-                # Define os valores padrão
-                template_type = "TEXT"
-                vertical = name
-                enable_sample = True
-                allow_template_category_change = True
-
-                data = {
-                    'elementName': name,
-                    'languageCode': language_code,
-                    'category': category,
-                    'templateType': template_type,
-                    'vertical': vertical,
-                    'content': content,  # Usa o content recebido diretamente
-                    'example': example,  # Usa o example recebido diretamente
-                    'enableSample': enable_sample,
-                    'allowTemplateCategoryChange': allow_template_category_change,
-                    'buttons': []  # Lista vazia para botões
-                }
-
+            for attempt in range(2):  # Tenta no máximo 2 vezes (incluindo refresh de token)
                 response = requests.post(url, headers=headers, data=data)
+                
+                if response.status_code == 429:  # Limite de requisições
+                    print("Limite de requisições atingido. Tentando renovar o token...")
+                    self.app_token_service.refresh_app_token()
+                    headers['Authorization'] = f'Bearer {self.app_token_service.get_app_token()}'  # Atualiza os headers
+                    continue  # Tenta novamente com o novo token
 
-                if response.status_code in (200, 204):
+                if response.status_code == 401:  # Token expirado ou inválido
+                    print("Token inválido ou expirado. Renovando token...")
+                    self.app_token_service.refresh_app_token()
+                    headers['Authorization'] = f'Bearer {self.app_token_service.get_app_token()}'
+                    continue  # Tenta novamente com o novo token
+
+                if response.status_code in (200, 204):  # Sucesso
                     print("Template criado com sucesso.")
-                    if response.status_code == 200:
-                        print(response.json())
+                    return response.json() if response.status_code == 200 else None
+                
+                elif response.status_code == 400 and "Template Already exists" in response.text:
+                    # Tratamento para templates duplicados
+                    print("Template já existe, abortando criação.")
+                    return {"status": "error", "message": "Template já existe."}
+
                 else:
+                    # Outros erros
                     print(f"Erro ao criar template: {response.status_code} - {response.text}")
                     raise Exception("Não foi possível criar o template.")
 
-            except Exception as e:
-                print(f"[TemplateService] Erro ao criar template: {e}")
+            # Caso todas as tentativas falhem
+            raise Exception(f"Erro após múltiplas tentativas: {response.status_code} - {response.text}")
+
+        except Exception as e:
+            print(f"[TemplateService] Erro ao criar template: {e}")
+            raise
 
     def remove_template_by_id(self, app_id, template_id):
             """
