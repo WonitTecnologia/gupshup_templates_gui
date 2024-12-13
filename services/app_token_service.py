@@ -1,6 +1,7 @@
 # services/app_token_service.py
 # serviço para buscar o token de serviço, para utilizar em apps.
 import requests
+import time
 from models.app_token import AppToken
 from config.api_config import URL_PARTNER
 
@@ -32,3 +33,14 @@ class AppTokenService:
     def get_app_token(self):
         """Retorna o TOKEN_APP armazenado no modelo AppToken."""
         return self.app_token.get_token_app()
+
+    def refresh_app_token(self):
+        """Atualiza o token do app chamando o método fetch_app_token, aguardando 60 segundos."""
+        try:
+            print("Renovando o TOKEN_APP... Aguardando 60 segundos...")
+            time.sleep(60)  # Aguarda 60 segundos
+            self.fetch_app_token()
+            print("TOKEN_APP renovado com sucesso.")
+        except Exception as e:
+            print(f"Erro ao renovar o TOKEN_APP: {e}")
+            raise Exception("Não foi possível renovar o TOKEN_APP.")

@@ -1,3 +1,6 @@
+import os
+import csv
+
 class Menu:
     def __init__(self, template_controller, app_id):
         self.template_controller = template_controller
@@ -106,15 +109,76 @@ class Menu:
     def create_templates_from_csv(self):
         print("Criando templates a partir de um arquivo CSV...")
         csv_path = input("Digite o caminho do arquivo CSV: ")
-        self.template_controller.create_templates_from_csv(self.app_id, csv_path)
+
+        if not os.path.isfile(csv_path):
+            print("Arquivo CSV não encontrado.")
+            return
+
+        templates = []
+
+        try:
+            with open(csv_path, mode='r', encoding='utf-8') as csv_file:
+                reader = csv.DictReader(csv_file)
+
+                if set(reader.fieldnames) == {"ID", "Name", "Texto", "Category", "Status"}:
+                    # Remontar o cabeçalho para o novo formato
+                    for row in reader:
+                        name = row["Name"]
+                        texto = row["Texto"].replace("\\n", "\n")
+
+                        example = texto
+                        for i in range(1, texto.count("{{") + 1):
+                            example = example.replace(f"{{{{{i}}}}}", f"Exemplo{i}")
+
+                        templates.append({"Name": name, "Texto": texto, "Example": example})
+
+                elif set(reader.fieldnames) == {"Name", "Texto", "Example"}:
+                    # CSV já está no formato esperado
+                    for row in reader:
+                        templates.append(row)
+
+                else:
+                    print("Formato de CSV inválido.")
+                    return
+
+            # Printar os templates processados
+            print("Templates processados:")
+            for template in templates:
+                print(template)
+
+            # Perguntar se deseja cadastrar
+            resposta = input("Deseja cadastrar os templates? (s/n): ").strip().lower()
+            if resposta == 's':
+                print("Cadastrando templates...")
+                # Define a categoria como 'UTILITY' e o idioma como 'pt_BR'
+                category = "UTILITY"
+                language_code = "pt_BR"
+
+                # Chamar método de cadastro (simulado)
+                for template in templates:
+                    name = template["Name"]
+                    content_to_send = template["Texto"]
+                    example = template["Example"]
+
+                    self.template_controller.create_template(
+                        self.app_id, name, category, language_code, content_to_send, example
+                    )
+                print("Templates cadastrados com sucesso!")
+            else:
+                print("Cadastro cancelado.")
+
+        except Exception as e:
+            print(f"Erro ao processar o arquivo CSV: {e}")
 
     def backup_templates(self):
         print("Realizando backup dos templates...")
         self.template_controller.backup_templates(self.app_id)
 
     def remove_templates_from_csv(self):
-        print("Removendo templates a partir de um arquivo CSV...")
-        csv_path = input("Digite o caminho do arquivo CSV: ")
+        """
+        Solicita o caminho do arquivo CSV e remove os templates correspondentes.
+        """
+        csv_path = input("Digite o caminho do arquivo CSV contendo os IDs dos templates: ")
         self.template_controller.remove_templates_from_csv(self.app_id, csv_path)
 
     def remove_template_by_id(self):
