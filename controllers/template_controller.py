@@ -32,6 +32,9 @@ class TemplateController:
             self.template_service.present_templates()
 
         except Exception as e:
+            print(f"Ocorreu um erro ao obter os templates: {e}")
+
+        except Exception as e:
             print(f"Erro ao obter templates: {e}") 
 
     def backup_templates(self, app_id):
