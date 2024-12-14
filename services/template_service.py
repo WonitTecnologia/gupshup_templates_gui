@@ -54,11 +54,13 @@ class TemplateService:
                 template.set_vertical(item.get('vertical'))
                 template.set_waba_id(item.get('wabaId'))
 
-                self.templates.append(template)  # Adiciona o template à lista
+                self.templates.append(template)
+
             print("Templates obtidos com sucesso.")
+            return 200  # Retorna 200 se tudo ocorreu bem
         else:
-            print(f"Erro ao obter templates: {response.status_code} - {response.text}")
-            raise Exception("Não foi possível obter os templates.")
+            print(f"Erro {response.status_code} - {response.text}")
+            return response.status_code  # Retorna o código de status para outros erros não tratados
 
     def present_templates(self):
         """Apresenta os templates de maneira formatada."""
@@ -124,37 +126,16 @@ class TemplateService:
                 'buttons': []
             }
 
-            for attempt in range(2):  # Tenta no máximo 2 vezes (incluindo refresh de token)
-                response = requests.post(url, headers=headers, data=data)
-                
-                if response.status_code == 429:  # Limite de requisições
-                    print("Limite de requisições atingido. Tentando renovar o token...")
-                    self.app_token_service.refresh_app_token()
-                    headers['Authorization'] = f'Bearer {self.app_token_service.get_app_token()}'  # Atualiza os headers
-                    continue  # Tenta novamente com o novo token
+            response = requests.post(url, headers=headers, data=data)
 
-                if response.status_code == 401:  # Token expirado ou inválido
-                    print("Token inválido ou expirado. Renovando token...")
-                    self.app_token_service.refresh_app_token()
-                    headers['Authorization'] = f'Bearer {self.app_token_service.get_app_token()}'
-                    continue  # Tenta novamente com o novo token
+            if response.status_code in (200, 204):  # Sucesso
+                print("Template criado com sucesso.")
+                return 
 
-                if response.status_code in (200, 204):  # Sucesso
-                    print("Template criado com sucesso.")
-                    return response.json() if response.status_code == 200 else None
-                
-                elif response.status_code == 400 and "Template Already exists" in response.text:
-                    # Tratamento para templates duplicados
-                    print("Template já existe, abortando criação.")
-                    return {"status": "error", "message": "Template já existe."}
-
-                else:
-                    # Outros erros
-                    print(f"Erro ao criar template: {response.status_code} - {response.text}")
-                    raise Exception("Não foi possível criar o template.")
-
-            # Caso todas as tentativas falhem
-            raise Exception(f"Erro após múltiplas tentativas: {response.status_code} - {response.text}")
+            else:
+                # Qualquer erro na criação do template
+                print(f"Erro ao criar template: {response.status_code} - {response.text}")
+                raise Exception("Não foi possível criar o template.")
 
         except Exception as e:
             print(f"[TemplateService] Erro ao criar template: {e}")
