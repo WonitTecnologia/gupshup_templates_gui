@@ -13,12 +13,12 @@ class Menu:
             print("2 - Criar template (Básico)")
             print("3 - Criar templates por CSV")
             print("4 - Backup de templates")
-            print("5 - Remover templates por CSV")
-            print("6 - Remover template por ID")
+            print("5 - Extrai HTML de templates")
+            print("6 - Remover templates por CSV")
+            print("7 - Remover template por ID")
             print("0 - Sair")
 
             choice = input("Escolha uma opção: ")
-
             if choice == "1":
                 self.view_templates()
             elif choice == "2":
@@ -28,14 +28,22 @@ class Menu:
             elif choice == "4":
                 self.backup_templates()
             elif choice == "5":
-                self.remove_templates_from_csv()
+                self.export_html_templates()
             elif choice == "6":
+                self.remove_templates_from_csv()
+            elif choice == "7":
                 self.remove_template_by_id()
             elif choice == "0":
                 print("Saindo...")
                 break
             else:
                 print("Opção inválida. Tente novamente.")
+
+
+    def export_html_templates(self):
+        print("Criando documento em HTML...")
+        self.template_controller.export_html_templates(self.app_id)
+
 
     def view_templates(self):
         print("Visualizando todos os templates...")

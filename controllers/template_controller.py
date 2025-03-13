@@ -59,6 +59,28 @@ class TemplateController:
         except Exception as e:
             print(f"Erro ao realizar backup dos templates: {e}")
 
+    def export_html_templates(self, app_id):
+        """
+        Realiza o backup dos templates para um determinado app_id em um arquivo CSV.
+
+        Args:
+            app_id (str): O ID da aplicação Gupshup.
+        """
+        try:
+            # 1. Obter token do parceiro (se necessário)
+            self.partner_service.get_token()
+
+            # 2. Obter token da aplicação
+            self.app_token_service = AppTokenService(app_id, self.partner_service)
+            self.app_token_service.fetch_app_token()
+
+            # 3. Obter templates usando fetch_templates
+            self.template_service = TemplateService(self.app_token_service)
+            self.template_service.export_templates_html(app_id)
+
+        except Exception as e:
+            print(f"Erro ao realizar backup dos templates: {e}")
+
     def create_template(self, app_id, name, category, language_code, content, example):
             """
                 Realiza a criação de template da Meta Library na plataforma Gupshup.

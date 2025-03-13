@@ -71,6 +71,87 @@ class TemplateService:
         for template in self.templates:
             print(template)  # Chama o método __str__ da classe Template
 
+
+    def export_templates_json(self, app_id):
+        """Retorna um JSON com os templates da aplicação."""
+        try:
+            self.fetch_templates(app_id)
+            templates_json = [
+                {
+                    "ID": template.get_id(),
+                    "Name": template.get_element_name(),
+                    "Texto": template.get_data(),
+                    "Category": template.get_category(),
+                    "Status": template.get_status()
+                } for template in self.templates
+            ]
+            return json.dumps({"templates": templates_json}, indent=4, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    def export_templates_html(self, app_id):
+        """
+        Exporta os templates em um arquivo HTML estilizado.
+        """
+        json_data = json.loads(self.export_templates_json(app_id))
+        if "error" in json_data:
+            print("Erro ao obter templates.")
+            return
+        
+        html_content = """
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Templates DWV</title>
+            <style>
+                body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; background: white; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #007BFF; color: white; }
+            </style>
+        </head>
+        <body>
+            <h2>Templates DWV</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Texto</th>
+                        <th>Categoria</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for template in json_data["templates"]:
+            html_content += f"""
+                    <tr>
+                        <td>{template['ID']}</td>
+                        <td>{template['Name']}</td>
+                        <td>{template['Texto']}</td>
+                        <td>{template['Category']}</td>
+                        <td>{template['Status']}</td>
+                    </tr>
+            """
+        
+        html_content += """
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """
+        
+        file_path = "templates_export.html"
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(html_content)
+        
+        print(f"Exportação concluída. Arquivo salvo em {file_path}")
+        return file_path
+
+        
     def backup_templates(self, app_id):
         """
         Realiza o backup dos templates para um determinado app_id em um arquivo CSV.
